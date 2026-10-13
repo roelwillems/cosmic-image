@@ -1,0 +1,16 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
+#
+# OPINIONATED image: the clean image + your tools and apps.
+# This is the one you run day to day.
+# Published as ghcr.io/roelwillems/cosmic-roel
+
+name: cosmic-roel
+description: COSMIC + NVIDIA-open with Roel's tools and apps.
+
+base-image: ghcr.io/ublue-os/base-nvidia
+image-version: latest # keep identical to recipe-clean.yml
+
+modules:
+  - from-file: common-base.yml
+  - from-file: common-apps.yml

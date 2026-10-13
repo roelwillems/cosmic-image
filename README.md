@@ -1,43 +1,76 @@
-# cosmic-image &nbsp; [![bluebuild build badge](https://github.com/roelwillems/cosmic-image/actions/workflows/build.yml/badge.svg)](https://github.com/roelwillems/cosmic-image/actions/workflows/build.yml)
+# COSMIC + NVIDIA — my own Fedora Atomic image
 
-See the [BlueBuild docs](https://blue-build.org/how-to/setup/) for quick setup instructions for setting up your own repository based on this template.
+Two custom images built with [BlueBuild](https://blue-build.org), rebuilt daily by GitHub Actions:
 
-After setup, it is recommended you update this README to describe your custom image.
+| Image | Recipe | What's in it |
+|---|---|---|
+| `cosmic-nvidia` | `recipes/recipe-clean.yml` | COSMIC desktop + NVIDIA-open driver. Fallback / test image. |
+| `cosmic-roel` | `recipes/recipe-roel.yml` | The clean image + Tailscale, Homebrew and my Flatpak apps. Daily driver. |
 
-## Installation
+Both start from `ghcr.io/ublue-os/base-nvidia`: Universal Blue's minimal Fedora Atomic image with the NVIDIA-open driver already built in and kept in sync with the kernel. COSMIC comes from Fedora's own repositories.
 
-> [!WARNING]  
-> [This is an experimental feature](https://www.fedoraproject.org/wiki/Changes/OstreeNativeContainerStable), try at your own discretion.
+## Repository layout
 
-To rebase an existing atomic Fedora installation to the latest build:
+```
+recipes/
+  recipe-clean.yml     # image 1: just includes common-base.yml
+  recipe-roel.yml      # image 2: common-base.yml + common-apps.yml
+  common-base.yml      # COSMIC, login screen, signing (shared)
+  common-apps.yml      # Tailscale, Homebrew, Flatpaks (personal)
+files/
+  scripts/set-graphical-target.sh
+  system/              # files copied into the image root (add your own later)
+.github/workflows/build.yml   # builds both recipes every day at 06:00 UTC
+```
 
-- First rebase to the unsigned image, to get the proper signing keys and policies installed:
-  ```
-  rpm-ostree rebase ostree-unverified-registry:ghcr.io/roelwillems/cosmic-image:latest
-  ```
-- Reboot to complete the rebase:
-  ```
-  systemctl reboot
-  ```
-- Then rebase to the signed image, like so:
-  ```
-  rpm-ostree rebase ostree-image-signed:docker://ghcr.io/roelwillems/cosmic-image:latest
-  ```
-- Reboot again to complete the installation
-  ```
-  systemctl reboot
-  ```
+## One-time setup
 
-The `latest` tag will automatically point to the latest build. That build will still always use the Fedora version specified in `recipe.yml`, so you won't get accidentally updated to the next major version.
+1. **Create the repository** at <https://workshop.blue-build.org> → *Log in with GitHub* → *New custom image repository*. Name it e.g. `cosmic-image`, keep it **public** (free builds, and your PC can pull the image without a login). Choose **automatic** container signing. This creates the repo, the `cosign.pub` key and the `SIGNING_SECRET`.
+2. **Add these files** to that repository:
+   - delete `recipes/recipe.yml`;
+   - copy in `recipes/`, `files/scripts/`, and `.github/workflows/build.yml` from this folder;
+   - **keep** the `cosign.pub` the Workshop created — don't replace it.
+3. **Commit and push.** Open the *Actions* tab: two builds start (`recipe-clean.yml`, `recipe-roel.yml`). The first run takes roughly 20–40 minutes.
+4. **Check the result.** Both builds green → the images appear under *Packages* on your GitHub profile. If a rebase later fails with "unauthorized", open each package → *Package settings* → set visibility to **Public**.
 
-## ISO
-
-If build on Fedora Atomic, you can generate an offline ISO with the instructions available [here](https://blue-build.org/how-to/generate-iso/#_top). These ISOs cannot unfortunately be distributed on GitHub for free due to large sizes, so for public projects something else has to be used for hosting.
-
-## Verification
-
-These images are signed with [Sigstore](https://www.sigstore.dev/)'s [cosign](https://github.com/sigstore/cosign). You can verify the signature by downloading the `cosign.pub` file from this repo and running the following command:
+## Install on the PC (from Bazzite)
 
 ```bash
-cosign verify --key cosign.pub ghcr.io/roelwillems/cosmic-image
+# keep Bazzite as a fallback in the boot menu
+rpm-ostree status          # no pending update? otherwise reboot first
+sudo ostree admin pin 0
+
+# 1st rebase: unsigned, to install the signing keys
+rpm-ostree rebase ostree-unverified-registry:ghcr.io/roelwillems/cosmic-roel:latest
+systemctl reboot
+
+# 2nd rebase: signed
+rpm-ostree rebase ostree-image-signed:docker://ghcr.io/roelwillems/cosmic-roel:latest
+systemctl reboot
 ```
+
+After logging in to COSMIC:
+
+- **Apps** install in the background on first login (you get a notification). Run `bluebuild-flatpak-manager` to see status.
+- **NVIDIA:** `nvidia-smi` should show your RTX 2060. If it doesn't (`lsmod | grep nvidia` is empty), add the boot options once and reboot:
+  ```bash
+  rpm-ostree kargs --append-if-missing=rd.driver.blacklist=nouveau \
+    --append-if-missing=modprobe.blacklist=nouveau \
+    --append-if-missing=nvidia-drm.modeset=1
+  ```
+- **Secure Boot:** the driver is signed with Universal Blue's key. Coming from Bazzite it is normally already enrolled. If the driver won't load with Secure Boot on, enroll it: `sudo mokutil --import` with Universal Blue's [public key](https://github.com/ublue-os/akmods/raw/main/certs/public_key.der) (password `universalblue` at the blue boot screen).
+- **Tailscale:** `sudo tailscale up`
+- **Homebrew:** open a new terminal, then e.g. `brew install fastfetch`.
+
+## Daily workflow
+
+1. Edit a recipe (e.g. remove a `#` in `common-apps.yml`), commit, push.
+2. GitHub builds a new image (also automatically every morning with Fedora updates).
+3. On the PC: `rpm-ostree upgrade && systemctl reboot` — or let automatic updates pick it up.
+4. Something wrong? Choose the previous entry in the boot menu, or `rpm-ostree rollback`.
+
+A failed build never touches your PC — you simply stay on the last good image. Read the build log in the *Actions* tab to see what broke.
+
+## Switching between the two images
+
+`rpm-ostree rebase ostree-image-signed:docker://ghcr.io/roelwillems/cosmic-nvidia:latest` (and back). Note: Flatpaks and Homebrew live in your home/`/var`, so they stay installed when you switch to the clean image.

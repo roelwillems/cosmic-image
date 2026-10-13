@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
+#
+# CLEAN image: COSMIC + NVIDIA-open, nothing else.
+# Use it as a fallback, for testing, or as a base you could share.
+# Published as ghcr.io/roelwillems/cosmic-nvidia
+
+name: cosmic-nvidia
+description: Fedora Atomic with the COSMIC desktop and NVIDIA-open drivers.
+
+# Universal Blue's minimal Fedora Atomic image (no desktop) WITH the
+# NVIDIA-open driver built in (suits Turing / RTX 20-series and newer).
+base-image: ghcr.io/ublue-os/base-nvidia
+# "latest" follows the current Fedora release; Universal Blue moves it to a
+# new Fedora version a few weeks after release. Pin a number (e.g. 44) if you
+# prefer to decide yourself when to upgrade.
+image-version: latest
+
+modules:
+  - from-file: common-base.yml

@@ -1,0 +1,66 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+#
+# Your personal layer: system tools, Homebrew and Flatpak apps.
+# Only used by recipe-roel.yml.
+#
+# To add an app: add its Flathub ID to the list, commit, and the next build
+# includes it. Flathub IDs are checked at build time, so a typo fails the
+# build instead of breaking your PC.
+
+modules:
+  # --- System-level tools (need to be in the image, not a Flatpak) ---------
+  - type: dnf
+    repos:
+      files:
+        - https://pkgs.tailscale.com/stable/fedora/tailscale.repo
+    install:
+      packages:
+        - tailscale
+
+  - type: systemd
+    system:
+      enabled:
+        - tailscaled.service
+
+  # --- Homebrew for command-line tools (installs into your home, not the OS)
+  - type: brew
+
+  # --- Flatpak apps from Flathub --------------------------------------------
+  # Installed per user on first boot/login; missing ones are added on later
+  # boots. Removing a line does NOT uninstall the app — remove it yourself
+  # in COSMIC Store or with `flatpak uninstall <id>`.
+  - type: default-flatpaks
+    configurations:
+      - scope: user
+        notify: true
+        install:
+          # Your list
+          - me.proton.Mail
+          - com.protonvpn.www               # Proton VPN
+          - me.proton.Pass
+          - com.yubico.yubioath             # Yubico Authenticator
+          - md.obsidian.Obsidian
+          - org.standardnotes.standardnotes
+          - com.vivaldi.Vivaldi
+          - org.videolan.VLC
+          - org.localsend.localsend_app
+          - com.synology.SynologyDrive
+
+          # Flatpak housekeeping (Linux stand-in for Mole / AppCleaner)
+          - io.github.flattool.Warehouse    # manage apps, clear leftover app data
+          - com.github.tchx84.Flatseal      # fine-tune app permissions
+
+          # Matches for apps on your MacBook
+          - org.signal.Signal
+          - com.calibre_ebook.calibre
+          - org.libreoffice.LibreOffice
+          - com.plexamp.Plexamp
+          - com.vscodium.codium
+          - com.termius.Termius
+          - com.transmissionbt.Transmission
+          - io.missioncenter.MissionCenter  # ~ Activity Monitor
+          - org.gnome.World.PikaBackup      # ~ Time Machine (Borg backups, e.g. to your Synology)
+          - com.github.jeromerobert.pdfarranger # merge/split/reorder PDFs
+          - io.github.pwr_solaar.solaar     # ~ Logi Options+ for Logitech devices
+          - com.github.huluti.Curtail       # ~ ImageOptim

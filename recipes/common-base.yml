@@ -1,0 +1,35 @@
+---
+# yaml-language-server: $schema=https://schema.blue-build.org/module-list-v1.json
+#
+# Shared by BOTH images: COSMIC desktop on Universal Blue's NVIDIA base.
+# The base image (set in each recipe) already contains the NVIDIA-open
+# driver, kept in sync with the kernel by Universal Blue.
+
+modules:
+  # Copy anything in files/system/ into the image root (empty for now;
+  # this is where your own config files will go later).
+  - type: files
+    files:
+      - source: system
+        destination: /
+
+  # Install COSMIC from Fedora's own repositories.
+  - type: dnf
+    install:
+      packages:
+        - "@cosmic-desktop-environment" # Fedora's full COSMIC environment group
+        - cosmic-greeter # COSMIC login screen (listed explicitly to be sure)
+
+  # Start the COSMIC login screen at boot.
+  - type: systemd
+    system:
+      enabled:
+        - cosmic-greeter.service
+
+  # The base image boots to a text console by default; switch to graphical.
+  - type: script
+    scripts:
+      - set-graphical-target.sh
+
+  # Sets up the signing policy so `ostree-image-signed:` rebases work.
+  - type: signing

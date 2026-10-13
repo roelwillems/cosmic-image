@@ -17,11 +17,28 @@ modules:
     install:
       packages:
         - tailscale
+        - git
+        - podman
+        - podman-compose
+        - gcc   # also needed by Homebrew and to build keyd below
+        - make
+
+  # --- Mac-style keyboard (keyd) --------------------------------------------
+  # Alt = Cmd, Win = Option, Caps Lock = Super. Config: files/keyd/default.conf
+  - type: files
+    files:
+      - source: keyd
+        destination: /etc/keyd
+
+  - type: script
+    scripts:
+      - install-keyd.sh
 
   - type: systemd
     system:
       enabled:
         - tailscaled.service
+        - keyd.service
 
   # --- Homebrew for command-line tools (installs into your home, not the OS)
   - type: brew
